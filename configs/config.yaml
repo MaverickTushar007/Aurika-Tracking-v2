@@ -6,7 +6,7 @@ local:
 
 kaggle:
   video_path: "/kaggle/input/datasets/tusharmarscitizen/video-analysis/Dark_lighting.mp4"
-  model_path: "/kaggle/input/datasets/tusharmarscitizen/video-analysis/yolo_staff_customer.pt"
+  model_path: "yolo11l.pt"
   output_dir: "/kaggle/working/runs"
 
 
