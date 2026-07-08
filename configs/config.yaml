@@ -1,7 +1,7 @@
 # Path Configurations
 local:
-  video_path: "/Users/tusharbhatt/Desktop/CustomerVideo_Intel/Dark_lighting.mp4"
-  model_path: "/Users/tusharbhatt/Desktop/CustomerVideo_Intel/yolo_staff_customer.pt"
+  video_path: "./videos/Dark_lighting.mp4"
+  model_path: "./models/yolo11l.pt"          # BENCHMARK WINNER (2026-07-08)
   output_dir: "./runs"
 
 kaggle:
@@ -13,10 +13,10 @@ kaggle:
 # ByteTrack Parameters
 tracker:
   tracker_type: "bytetrack"
-  track_high_thresh: 0.25      # Baseline
+  track_high_thresh: 0.25      # Baseline — consider raising to 0.35 to reduce birth_rate fragmentation
   track_low_thresh: 0.1        # Baseline
   new_track_thresh: 0.25       # Baseline
-  track_buffer: 30             # Baseline (frames)
-  match_thresh: 0.8            # Baseline
+  track_buffer: 60             # Increased from 30 — benchmark showed 707 permanently lost tracks
+  match_thresh: 0.8            # Baseline — consider lowering to 0.7 to improve re-linking
   fuse_score: True
   gmc_method: "none"           # Global motion compensation: sparseOptFlow, orb, none

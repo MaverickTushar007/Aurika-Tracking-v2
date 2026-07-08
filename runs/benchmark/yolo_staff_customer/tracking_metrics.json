@@ -1,0 +1,16 @@
+{
+  "model": "yolo_staff_customer",
+  "label": "yolo_staff_customer  (Fine-tuned)",
+  "frames_sampled": 5937,
+  "avg_tracks": 0.17887822132390097,
+  "max_tracks": 2,
+  "total_unique_ids": 29,
+  "track_birth_rate": 0.4884621862893717,
+  "avg_track_lifetime": 172.13793103448276,
+  "max_track_lifetime": 1204.0,
+  "recovered_tracks": 16,
+  "tracks_lost": 27,
+  "median_ms": 24.61799996672198,
+  "p95_ms": 31.882199610117823,
+  "peak_ram_mb": 458.539008
+}

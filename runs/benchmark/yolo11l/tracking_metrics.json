@@ -1,0 +1,16 @@
+{
+  "model": "yolo11l",
+  "label": "YOLO11l  (COCO pretrained)",
+  "frames_sampled": 5937,
+  "avg_tracks": 10.191342428836112,
+  "max_tracks": 19,
+  "total_unique_ids": 724,
+  "track_birth_rate": 12.194711133569143,
+  "avg_track_lifetime": 99.77762430939227,
+  "max_track_lifetime": 2275.0,
+  "recovered_tracks": 514,
+  "tracks_lost": 707,
+  "median_ms": 152.14383299462497,
+  "p95_ms": 205.27604155940935,
+  "peak_ram_mb": 297.926656
+}

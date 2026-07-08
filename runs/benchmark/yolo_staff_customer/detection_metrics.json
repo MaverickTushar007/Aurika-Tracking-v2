@@ -1,0 +1,12 @@
+{
+  "model": "yolo_staff_customer",
+  "label": "yolo_staff_customer  (Fine-tuned)",
+  "frames_sampled": 5937,
+  "avg_detections": 0.22418729998315648,
+  "avg_confidence": 0.33859111705639594,
+  "median_confidence": 0.31883591413497925,
+  "avg_small_dets": 0.06703722418729999,
+  "median_ms": 27.427083055954427,
+  "p95_ms": 48.93771639326584,
+  "peak_ram_mb": 319.881216
+}

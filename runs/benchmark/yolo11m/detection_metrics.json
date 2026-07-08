@@ -1,0 +1,12 @@
+{
+  "model": "yolo11m",
+  "label": "YOLO11m  (COCO pretrained)",
+  "frames_sampled": 5937,
+  "avg_detections": 9.116557183762843,
+  "avg_confidence": 0.5409655218856715,
+  "median_confidence": 0.5085945129394531,
+  "avg_small_dets": 0.00067374094660603,
+  "median_ms": 88.62049999879673,
+  "p95_ms": 131.26950820442286,
+  "peak_ram_mb": 323.371008
+}

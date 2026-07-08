@@ -1,0 +1,188 @@
+22:25:29 [INFO] ╔══════════════════════════════════════════╗
+22:25:29 [INFO] ║  Aurika Tracking v2 — Detector Benchmark ║
+22:25:29 [INFO] ╚══════════════════════════════════════════╝
+22:25:29 [INFO] Device      : MPS
+22:25:29 [INFO] Video       : /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/videos/Dark_lighting.mp4  (89.7 MB)
+22:25:29 [INFO] Sample rate : every 3rd frame
+22:25:29 [INFO] Models      : ['yolo11m', 'yolo11l', 'yolo11x', 'yolo_staff_customer']
+22:25:29 [INFO] Output      : /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark
+
+22:25:29 [INFO] ==============================================================
+22:25:29 [INFO]   STAGE 2 · DETECTION · yolo11m
+22:25:29 [INFO] ==============================================================
+22:25:29 [INFO]   Model: yolo11m.pt  (40.7 MB)
+22:26:41 [INFO]   [yolo11m] 500 samples  (src 1503/17815  8%)
+22:27:41 [INFO]   [yolo11m] 1000 samples  (src 3003/17815  17%)
+22:28:40 [INFO]   [yolo11m] 1500 samples  (src 4503/17815  25%)
+22:29:41 [INFO]   [yolo11m] 2000 samples  (src 6003/17815  34%)
+22:30:43 [INFO]   [yolo11m] 2500 samples  (src 7503/17815  42%)
+22:31:42 [INFO]   [yolo11m] 3000 samples  (src 9003/17815  51%)
+22:32:42 [INFO]   [yolo11m] 3500 samples  (src 10503/17815  59%)
+22:33:40 [INFO]   [yolo11m] 4000 samples  (src 12003/17815  67%)
+22:34:38 [INFO]   [yolo11m] 4500 samples  (src 13503/17815  76%)
+22:35:36 [INFO]   [yolo11m] 5000 samples  (src 15003/17815  84%)
+22:36:33 [INFO]   [yolo11m] 5500 samples  (src 16503/17815  93%)
+22:37:36 [INFO]   Detection video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo11m/detection_output.mp4
+22:37:38 [INFO]   avg_det=9.12  avg_conf=0.541  small=0.00  median_ms=88.6
+22:37:38 [INFO] ==============================================================
+22:37:38 [INFO]   STAGE 2 · DETECTION · yolo11l
+22:37:38 [INFO] ==============================================================
+22:37:38 [INFO]   Model: yolo11l.pt  (51.4 MB)
+22:38:50 [INFO]   [yolo11l] 500 samples  (src 1503/17815  8%)
+22:40:00 [INFO]   [yolo11l] 1000 samples  (src 3003/17815  17%)
+22:41:21 [INFO]   [yolo11l] 1500 samples  (src 4503/17815  25%)
+22:42:36 [INFO]   [yolo11l] 2000 samples  (src 6003/17815  34%)
+22:43:50 [INFO]   [yolo11l] 2500 samples  (src 7503/17815  42%)
+22:45:03 [INFO]   [yolo11l] 3000 samples  (src 9003/17815  51%)
+22:46:14 [INFO]   [yolo11l] 3500 samples  (src 10503/17815  59%)
+22:47:43 [INFO]   [yolo11l] 4000 samples  (src 12003/17815  67%)
+22:48:58 [INFO]   [yolo11l] 4500 samples  (src 13503/17815  76%)
+22:50:13 [INFO]   [yolo11l] 5000 samples  (src 15003/17815  84%)
+22:51:27 [INFO]   [yolo11l] 5500 samples  (src 16503/17815  93%)
+22:52:27 [INFO]   Detection video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo11l/detection_output.mp4
+22:52:28 [INFO]   avg_det=10.95  avg_conf=0.536  small=0.01  median_ms=111.5
+22:52:28 [INFO] ==============================================================
+22:52:28 [INFO]   STAGE 2 · DETECTION · yolo11x
+22:52:28 [INFO] ==============================================================
+22:52:28 [INFO]   Model: yolo11x.pt  (114.6 MB)
+22:54:49 [INFO]   [yolo11x] 500 samples  (src 1503/17815  8%)
+22:57:52 [INFO]   [yolo11x] 1000 samples  (src 3003/17815  17%)
+22:59:56 [INFO]   [yolo11x] 1500 samples  (src 4503/17815  25%)
+23:02:08 [INFO]   [yolo11x] 2000 samples  (src 6003/17815  34%)
+23:04:07 [INFO]   [yolo11x] 2500 samples  (src 7503/17815  42%)
+23:06:16 [INFO]   [yolo11x] 3000 samples  (src 9003/17815  51%)
+23:08:31 [INFO]   [yolo11x] 3500 samples  (src 10503/17815  59%)
+23:10:56 [INFO]   [yolo11x] 4000 samples  (src 12003/17815  67%)
+23:13:58 [INFO]   [yolo11x] 4500 samples  (src 13503/17815  76%)
+23:16:16 [INFO]   [yolo11x] 5000 samples  (src 15003/17815  84%)
+23:19:38 [INFO]   [yolo11x] 5500 samples  (src 16503/17815  93%)
+23:23:32 [INFO]   Detection video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo11x/detection_output.mp4
+23:23:37 [INFO]   avg_det=9.99  avg_conf=0.551  small=0.00  median_ms=225.4
+23:23:37 [INFO] ==============================================================
+23:23:37 [INFO]   STAGE 2 · DETECTION · yolo_staff_customer
+23:23:37 [INFO] ==============================================================
+23:23:37 [INFO]   Model: yolo_staff_customer.pt  (21.2 MB)
+23:24:06 [INFO]   [yolo_staff_customer] 500 samples  (src 1503/17815  8%)
+23:24:38 [INFO]   [yolo_staff_customer] 1000 samples  (src 3003/17815  17%)
+23:25:04 [INFO]   [yolo_staff_customer] 1500 samples  (src 4503/17815  25%)
+23:25:28 [INFO]   [yolo_staff_customer] 2000 samples  (src 6003/17815  34%)
+23:25:49 [INFO]   [yolo_staff_customer] 2500 samples  (src 7503/17815  42%)
+23:26:11 [INFO]   [yolo_staff_customer] 3000 samples  (src 9003/17815  51%)
+23:26:30 [INFO]   [yolo_staff_customer] 3500 samples  (src 10503/17815  59%)
+23:26:48 [INFO]   [yolo_staff_customer] 4000 samples  (src 12003/17815  67%)
+23:27:07 [INFO]   [yolo_staff_customer] 4500 samples  (src 13503/17815  76%)
+23:27:30 [INFO]   [yolo_staff_customer] 5000 samples  (src 15003/17815  84%)
+23:27:47 [INFO]   [yolo_staff_customer] 5500 samples  (src 16503/17815  93%)
+23:28:04 [INFO]   Detection video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo_staff_customer/detection_output.mp4
+23:28:05 [INFO]   avg_det=0.22  avg_conf=0.339  small=0.07  median_ms=27.4
+23:28:05 [INFO] 
+Detection ranking scores:
+23:28:05 [INFO]   yolo11m                    score=0.5478  conf_n=0.982  small_n=0.010  speed_s=0.607
+23:28:05 [INFO]   yolo11l                    score=0.5624  conf_n=0.972  small_n=0.136  speed_s=0.505
+23:28:05 [INFO]   yolo11x                    score=0.4009  conf_n=1.000  small_n=0.003  speed_s=0.000
+23:28:05 [INFO]   yolo_staff_customer        score=0.8153  conf_n=0.614  small_n=1.000  speed_s=0.878
+23:28:05 [INFO] 
+  → Top-2 advancing to tracking: ['yolo_staff_customer', 'yolo11l']
+23:28:05 [INFO] ==============================================================
+23:28:05 [INFO]   STAGE 3 · TRACKING · yolo_staff_customer
+23:28:05 [INFO] ==============================================================
+23:28:23 [INFO]   [yolo_staff_customer] 500 samples  (src 1503/17815  8%)  active tracks: 0
+23:28:39 [INFO]   [yolo_staff_customer] 1000 samples  (src 3003/17815  17%)  active tracks: 0
+23:28:56 [INFO]   [yolo_staff_customer] 1500 samples  (src 4503/17815  25%)  active tracks: 0
+23:29:14 [INFO]   [yolo_staff_customer] 2000 samples  (src 6003/17815  34%)  active tracks: 0
+23:29:32 [INFO]   [yolo_staff_customer] 2500 samples  (src 7503/17815  42%)  active tracks: 0
+23:29:50 [INFO]   [yolo_staff_customer] 3000 samples  (src 9003/17815  51%)  active tracks: 0
+23:30:09 [INFO]   [yolo_staff_customer] 3500 samples  (src 10503/17815  59%)  active tracks: 0
+23:30:29 [INFO]   [yolo_staff_customer] 4000 samples  (src 12003/17815  67%)  active tracks: 1
+23:30:47 [INFO]   [yolo_staff_customer] 4500 samples  (src 13503/17815  76%)  active tracks: 0
+23:31:05 [INFO]   [yolo_staff_customer] 5000 samples  (src 15003/17815  84%)  active tracks: 1
+23:31:22 [INFO]   [yolo_staff_customer] 5500 samples  (src 16503/17815  93%)  active tracks: 0
+23:31:38 [INFO]   Tracking video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo_staff_customer/tracking_output.mp4
+23:31:38 [INFO]   avg_tracks=0.18  max_tracks=2  avg_lifetime=172.1f  recovered=16  lost=27  birth_rate=0.49/100f
+23:31:38 [INFO] ==============================================================
+23:31:38 [INFO]   STAGE 3 · TRACKING · yolo11l
+23:31:38 [INFO] ==============================================================
+23:33:19 [INFO]   [yolo11l] 500 samples  (src 1503/17815  8%)  active tracks: 3
+23:34:59 [INFO]   [yolo11l] 1000 samples  (src 3003/17815  17%)  active tracks: 5
+23:36:43 [INFO]   [yolo11l] 1500 samples  (src 4503/17815  25%)  active tracks: 5
+23:38:18 [INFO]   [yolo11l] 2000 samples  (src 6003/17815  34%)  active tracks: 9
+23:40:11 [INFO]   [yolo11l] 2500 samples  (src 7503/17815  42%)  active tracks: 10
+23:41:50 [INFO]   [yolo11l] 3000 samples  (src 9003/17815  51%)  active tracks: 13
+23:43:22 [INFO]   [yolo11l] 3500 samples  (src 10503/17815  59%)  active tracks: 12
+23:44:47 [INFO]   [yolo11l] 4000 samples  (src 12003/17815  67%)  active tracks: 11
+23:46:12 [INFO]   [yolo11l] 4500 samples  (src 13503/17815  76%)  active tracks: 11
+23:47:37 [INFO]   [yolo11l] 5000 samples  (src 15003/17815  84%)  active tracks: 16
+23:49:12 [INFO]   [yolo11l] 5500 samples  (src 16503/17815  93%)  active tracks: 11
+23:51:15 [INFO]   Tracking video → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/yolo11l/tracking_output.mp4
+23:51:17 [INFO]   avg_tracks=10.19  max_tracks=19  avg_lifetime=99.8f  recovered=514  lost=707  birth_rate=12.19/100f
+23:51:17 [INFO] 
+  Full report → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/benchmark_report.md
+23:51:17 [INFO]   Detection CSV → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/detection_comparison.csv
+23:51:17 [INFO]   Tracking CSV  → /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark/tracking_comparison.csv
+
+================================================================================================
+  STAGE 2 — DETECTION BENCHMARK RESULTS
+  Note: avg_detections is informational only — NOT the ranking criterion.
+================================================================================================
+  Model                     Frames   Avg Det*  Avg Conf   Med Conf   Avg Small   Med ms     Peak RAM MB
+  --------------------------------------------------------------------------------------------
+  yolo11m                   5937     9.12      0.541      0.509      0.00        88.6       323        
+  yolo11l                   5937     10.95     0.536      0.494      0.01        111.5      345        
+  yolo11x                   5937     9.99      0.551      0.516      0.00        225.4      338        
+  yolo_staff_customer       5937     0.22      0.339      0.319      0.07        27.4       320        
+================================================================================================
+  * avg_detections is NOT used to select the winner (see benchmark docs).
+
+
+============================================================================================================
+  STAGE 3 — TRACKING BENCHMARK RESULTS  (Top-2 only)
+============================================================================================================
+  Model                     Frames   Avg Tracks  Max    Unique IDs  Birth/100f ↓  Avg Life ↑    Recovered ↑  Lost ↓  Med ms   
+  --------------------------------------------------------------------------------------------------------
+  yolo_staff_customer       5937     0.18        2      29          0.49          172.1         16         27      24.6     
+  yolo11l                   5937     10.19       19     724         12.19         99.8          514        707     152.1    
+============================================================================================================
+
+
+======================================================================
+  RECOMMENDATION
+======================================================================
+
+  WINNER  :  yolo11l
+  Label   :  YOLO11l  (COCO pretrained)
+  Score   :  0.6029  (runner-up yolo_staff_customer: 0.6004)
+
+  Reasons:
+
+  ~  Track lifetime 99.8 sampled frames — not the longest but within acceptable range given other strengths.
+
+  ✓  Best track recovery — 514 tracks reacquired vs 16 for yolo_staff_customer.
+     ByteTrack re-linked persons after occlusion or missed detections more
+     often, reducing the number of ID splits in crowded restaurant scenes.
+
+  ~  Birth rate 12.19/100f is slightly elevated vs 0.49/100f for yolo_staff_customer.
+     Some ID fragmentation is occurring — monitor in the full-length run.
+
+  ~  707 tracks were permanently lost before video end
+     (same as or slightly more than the runner-up). Acceptable for now.
+
+  ✓  Inference speed — 152.1 ms median / 205.3 ms p95 on MPS.
+     Suitable for offline batch processing at this frame rate.
+
+  Caveats:
+  ⚠  707 permanently lost tracks — consider increasing track_buffer or decreasing match_thresh to improve track persistence.
+  ⚠  Birth rate 12.19/100f is elevated. Tuning track_high_thresh may reduce ID fragmentation.
+  ⚠  Inference is slow (152 ms/frame). If real-time is later required, benchmark yolo_staff_customer with optimised settings.
+
+  Next step:
+  Run a FULL validation across all 17,815 frames of Dark_lighting.mp4
+  with yolo11l before promoting to production. This benchmark sampled
+  every 3rd frame; the full run is your production validation.
+
+  Command: python run.py  (after updating configs/config.yaml model_path)
+======================================================================
+
+  All outputs written to: /Users/tusharbhatt/Desktop/Aurika-Tracking-v2/runs/benchmark
+  Review the annotated videos in each model's subfolder,
+  then run the full 17,815-frame pipeline with the winner.
+

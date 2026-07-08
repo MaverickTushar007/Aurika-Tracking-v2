@@ -54,13 +54,14 @@ class TrackingEngine:
             # If yolo_results is empty, tracker.update returns an empty array.
             return np.empty((0, 8), dtype=np.float32)
 
-        # Filter detections: keep ONLY classes 0 ('customer') and 1 ('staff')
-        # Since this tracker expects a Boxes object, we filter using YOLO's indexing
+        # Filter detections: keep ONLY class 0 ('person') — COCO label for yolo11l (benchmark winner).
+        # Previously this was (cls==0)|(cls==1) for the custom staff/customer model.
+        # yolo11l uses COCO labels: 0=person, 1=bicycle — we only want persons.
         boxes = yolo_results.boxes
         if len(boxes) == 0:
             return np.empty((0, 8), dtype=np.float32)
 
-        mask = (boxes.cls == 0) | (boxes.cls == 1)
+        mask = (boxes.cls == 0)
         filtered_boxes = boxes[mask]
         
         if len(filtered_boxes) == 0:
