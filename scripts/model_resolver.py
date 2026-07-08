@@ -1,31 +1,26 @@
 """
 Aurika Tracking v2 — Model Resolver
 ====================================
-Single source of truth for model paths across environments.
+Single source of truth for model paths across execution environments.
 
-Rules
------
-- Local   : return  Path("models/<name>.pt")  (file must exist under PROJECT_ROOT)
-- Kaggle  : return  "<name>.pt"               (Ultralytics auto-downloads from hub)
-- Custom  : an entry with an explicit ``custom_path`` is always used as-is, after
-            resolving it relative to PROJECT_ROOT when it is a relative path.
+Supported environments
+-----------------------
+LOCAL   : returns  Path("models/<name>.pt")   (file must exist under PROJECT_ROOT)
+KAGGLE  : returns  "<name>.pt"                (Ultralytics auto-downloads from hub)
+
+Environment detection
+---------------------
+Kaggle is detected by the presence of the ``/kaggle`` directory OR the
+``KAGGLE_KERNEL_RUN_TYPE`` environment variable.
 
 Usage
 -----
     from scripts.model_resolver import ModelResolver
 
-    resolver = ModelResolver()          # auto-detects environment
-    path_or_id = resolver.resolve("yolo11l")   # → Path or str
+    resolver = ModelResolver()
+    path_or_id = resolver.resolve("yolo11l")  # → Path (local) or str (Kaggle)
 
-    # Full registry — same dict schema as benchmark.py MODELS, but with
-    # "path" keys filled in by the resolver instead of hardcoded.
     registry = resolver.build_registry(MODELS_META)
-
-Environment detection
----------------------
-Kaggle is detected by the presence of the ``/kaggle`` directory OR the
-``KAGGLE_KERNEL_RUN_TYPE`` environment variable, matching the same
-heuristic used by the production run.py.
 """
 
 import logging
@@ -35,7 +30,6 @@ from typing import Dict, Union
 
 log = logging.getLogger("Benchmark")
 
-# Project root is the parent of the scripts/ directory.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -49,13 +43,13 @@ def _is_kaggle() -> bool:
 
 class ModelResolver:
     """
-    Resolves a model name or custom path to what YOLO() should receive.
+    Resolves a YOLO11 model name to the correct path or hub identifier
+    for the current execution environment.
 
     Parameters
     ----------
     project_root : Path, optional
-        Override the project root (useful for tests). Defaults to the
-        parent of the scripts/ directory.
+        Override the project root (useful for tests).
     kaggle : bool, optional
         Override environment detection (useful for tests).
     """
@@ -70,57 +64,34 @@ class ModelResolver:
         env_label = "Kaggle" if self.is_kaggle else "Local"
         log.debug(f"[ModelResolver] environment = {env_label}")
 
-    def resolve(
-        self,
-        name: str,
-        custom_path: str | None = None,
-    ) -> Union[Path, str]:
+    def resolve(self, name: str) -> Union[Path, str]:
         """
         Return the model path or Ultralytics identifier for *name*.
 
         Parameters
         ----------
         name : str
-            Registry key, e.g. ``"yolo11l"`` or ``"yolo_staff_customer"``.
-        custom_path : str | None
-            When provided, always take precedence over auto-resolution.
-            Relative paths are resolved from PROJECT_ROOT.
+            Model name, e.g. ``"yolo11l"`` or ``"yolo11l.pt"``.
 
         Returns
         -------
         Path
-            When a local file exists and should be loaded from disk.
+            Absolute path to the local weight file.
         str
-            When the model should be fetched from Ultralytics hub
-            (Kaggle) or when custom_path is an absolute string.
+            Ultralytics hub identifier (Kaggle environment).
         """
-        # ── Explicit custom path always wins ────────────────────────────────
-        if custom_path is not None:
-            p = Path(custom_path)
-            if not p.is_absolute():
-                p = self.project_root / p
-            if not p.exists():
-                raise FileNotFoundError(
-                    f"Custom model path does not exist: {p}\n"
-                    f"(resolved from custom_path={custom_path!r})"
-                )
-            log.debug(f"[ModelResolver] {name} → custom  {p}")
-            return p
-
-        # ── Kaggle: return bare model name; Ultralytics downloads it ────────
-        if self.is_kaggle:
-            identifier = f"{name}.pt" if not name.endswith(".pt") else name
-            log.debug(f"[ModelResolver] {name} → kaggle  '{identifier}'")
-            return identifier
-
-        # ── Local: look under models/ ────────────────────────────────────────
         fname = f"{name}.pt" if not name.endswith(".pt") else name
+
+        if self.is_kaggle:
+            log.debug(f"[ModelResolver] {name} → kaggle  '{fname}'")
+            return fname
+
         local_path = self.project_root / "models" / fname
         if local_path.exists():
             log.debug(f"[ModelResolver] {name} → local   {local_path}")
             return local_path
 
-        # ── Local fallback: let Ultralytics try to download ─────────────────
+        # Model not found locally — let Ultralytics attempt a download
         log.warning(
             f"[ModelResolver] '{name}' not found at {local_path}. "
             f"Falling back to Ultralytics auto-download ('{fname}')."
@@ -129,15 +100,14 @@ class ModelResolver:
 
     def build_registry(self, models_meta: Dict[str, Dict]) -> Dict[str, Dict]:
         """
-        Accept a metadata dict (without ``"path"`` keys) and return a
-        complete registry with ``"path"`` filled in by the resolver.
+        Accept a metadata dict and return a complete registry with
+        ``"path"`` filled in by the resolver for each entry.
 
-        Expected input schema per model
-        --------------------------------
+        Expected schema per model
+        --------------------------
         {
-            "label":          str,             # human-readable name
-            "person_classes": List[int],       # COCO/fine-tuned class IDs
-            "custom_path":    str | None,      # optional override
+            "label":          str,         # human-readable name
+            "person_classes": List[int],   # COCO class IDs to keep
         }
 
         Returns
@@ -147,10 +117,7 @@ class ModelResolver:
         """
         registry: Dict[str, Dict] = {}
         for key, meta in models_meta.items():
-            entry = dict(meta)  # shallow copy — never mutate caller's dict
-            entry["path"] = self.resolve(
-                name=key,
-                custom_path=meta.get("custom_path"),
-            )
+            entry = dict(meta)
+            entry["path"] = self.resolve(key)
             registry[key] = entry
         return registry

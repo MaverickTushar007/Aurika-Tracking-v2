@@ -71,34 +71,19 @@ _resolver = ModelResolver(project_root=PROJECT_ROOT)
 
 # Model metadata — NO "path" keys here.
 # The resolver fills those in via build_registry() at startup.
-#
-# custom_path : relative to PROJECT_ROOT, used for fine-tuned weights that
-#               live on disk in both local and Kaggle environments.
-#               Set to None for standard Ultralytics pretrained models.
 _MODELS_META: Dict[str, Dict] = {
     "yolo11m": {
         # COCO: class 0 = person  |  class 1 = bicycle (must NOT be included)
         "person_classes": [0],
         "label": "YOLO11m  (COCO pretrained)",
-        "custom_path": None,
     },
     "yolo11l": {
         "person_classes": [0],
         "label": "YOLO11l  (COCO pretrained)",
-        "custom_path": None,
     },
     "yolo11x": {
         "person_classes": [0],
         "label": "YOLO11x  (COCO pretrained)",
-        "custom_path": None,
-    },
-    "yolo_staff_customer": {
-        # Fine-tuned: class 0 = customer, class 1 = staff
-        # custom_path tells the resolver to always load from disk
-        # (this weight is not on the Ultralytics hub).
-        "person_classes": [0, 1],
-        "label": "yolo_staff_customer  (Fine-tuned)",
-        "custom_path": "models/yolo_staff_customer.pt",
     },
 }
 
