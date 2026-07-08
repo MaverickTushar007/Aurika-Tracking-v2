@@ -15,7 +15,7 @@ logger = logging.getLogger("AurikaTracking")
 
 from tracker.config_loader import PipelineConfig
 from tracker.model_loader import load_yolo_model
-from tracker.video_loader import VideoLoader
+from tracker.video_loader import VideoLoader, TERM_EOF, TERM_READ_FAILURE
 from tracker.tracking_engine import TrackingEngine
 from tracker.visualization import annotate_frame
 
@@ -87,6 +87,7 @@ def main():
     # 6. Pipeline Run Loop
     frame_idx = 0
     start_time = time.time()
+    stopped_by_max_frames = False  # True when the caller limit (--max-frames) triggered the stop
     
     logger.info("Starting processing loop. Please wait...")
 
@@ -94,6 +95,10 @@ def main():
         for frame in video_loader.frames():
             frame_idx += 1
             if args.max_frames > 0 and frame_idx > args.max_frames:
+                stopped_by_max_frames = True
+                # Override the termination reason so video_loader knows this
+                # was a deliberate caller-side stop, not a codec failure.
+                video_loader.termination_reason = TERM_EOF
                 logger.info(f"Reached max-frames limit of {args.max_frames}. Stopping.")
                 break
             
@@ -128,8 +133,41 @@ def main():
         video_loader.release()
         
     duration = time.time() - start_time
-    logger.info(f"Pipeline completed successfully in {duration:.2f} seconds.")
-    logger.info(f"Final output video saved to: {output_video_path.resolve()}")
+
+    # ------------------------------------------------------------------
+    # Termination diagnostics
+    # ------------------------------------------------------------------
+    term_reason = video_loader.termination_reason
+    last_frame  = video_loader.last_frame_read  # last frame successfully decoded
+
+    if term_reason == TERM_READ_FAILURE:
+        # cap.read() returned False well before the expected frame count.
+        # This is consistent with a corrupted input video (e.g. H.264 NAL
+        # errors, missing picture headers, truncated bitstream).
+        logger.error(
+            f"PIPELINE TERMINATED DUE TO CORRUPTED INPUT VIDEO: "
+            f"{config.video_path!r}\n"
+            f"  Last successfully processed frame : {last_frame} "
+            f"(of {video_loader.frame_count} expected)\n"
+            f"  Reason                            : VideoCapture.read() returned False "
+            f"at frame ~{last_frame + 1} — likely H.264 NAL / decoder error\n"
+            f"  Elapsed time                      : {duration:.2f}s\n"
+            f"  Partial output saved to           : {output_video_path.resolve()}\n"
+            f"Action: Inspect the source video with 'ffprobe' or re-encode it with "
+            f"'ffmpeg -i input.mp4 -c copy output.mp4' before re-running."
+        )
+    elif stopped_by_max_frames:
+        logger.info(
+            f"Pipeline stopped at --max-frames limit ({args.max_frames} frames) "
+            f"in {duration:.2f}s. Last frame processed: {last_frame}. "
+            f"Output saved to: {output_video_path.resolve()}"
+        )
+    else:
+        logger.info(
+            f"Pipeline completed successfully in {duration:.2f}s. "
+            f"Frames processed: {last_frame}/{video_loader.frame_count}. "
+            f"Output saved to: {output_video_path.resolve()}"
+        )
 
 if __name__ == "__main__":
     main()
