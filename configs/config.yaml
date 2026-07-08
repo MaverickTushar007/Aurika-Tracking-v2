@@ -1,0 +1,21 @@
+# Path Configurations
+local:
+  video_path: "/Users/tusharbhatt/Desktop/CustomerVideo_Intel/Dark_lighting.mp4"
+  model_path: "/Users/tusharbhatt/Desktop/CustomerVideo_Intel/yolo_staff_customer.pt"
+  output_dir: "./runs"
+
+kaggle:
+  video_path: "/kaggle/input/aurika-video/Dark_lighting.mp4"
+  model_path: "/kaggle/input/aurika-model/yolo_staff_customer.pt"
+  output_dir: "/kaggle/working/runs"
+
+# ByteTrack Parameters
+tracker:
+  tracker_type: "bytetrack"
+  track_high_thresh: 0.25      # Baseline
+  track_low_thresh: 0.1        # Baseline
+  new_track_thresh: 0.25       # Baseline
+  track_buffer: 30             # Baseline (frames)
+  match_thresh: 0.8            # Baseline
+  fuse_score: True
+  gmc_method: "none"           # Global motion compensation: sparseOptFlow, orb, none
