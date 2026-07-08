@@ -3,3 +3,4 @@
 *.mp4
 kaggle_output/
 runs/benchmark/**/*.mp4
+runs/output.mp4
