@@ -27,12 +27,12 @@ import csv
 import gc
 import json
 import logging
-import os
+import sys
 import time
 import warnings
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -41,6 +41,14 @@ import torch
 
 from ultralytics import YOLO
 from ultralytics.trackers.byte_tracker import BYTETracker
+
+# Model resolution — environment-agnostic (local vs Kaggle)
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ on path
+from model_resolver import ModelResolver  # noqa: E402
+
+# Production model loader — handles local file + Ultralytics auto-download
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
+from tracker.model_loader import load_yolo_model  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -57,35 +65,54 @@ log = logging.getLogger("Benchmark")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Model registry — each entry carries its own person-class filter so the
-# benchmark never uses the wrong class for a given weight file.
-MODELS: Dict[str, Dict] = {
+# ── Environment-aware model resolver ────────────────────────────────────────
+# Instantiated once at module level; benchmark logic never touches paths.
+_resolver = ModelResolver(project_root=PROJECT_ROOT)
+
+# Model metadata — NO "path" keys here.
+# The resolver fills those in via build_registry() at startup.
+#
+# custom_path : relative to PROJECT_ROOT, used for fine-tuned weights that
+#               live on disk in both local and Kaggle environments.
+#               Set to None for standard Ultralytics pretrained models.
+_MODELS_META: Dict[str, Dict] = {
     "yolo11m": {
-        "path": PROJECT_ROOT / "models" / "yolo11m.pt",
         # COCO: class 0 = person  |  class 1 = bicycle (must NOT be included)
         "person_classes": [0],
         "label": "YOLO11m  (COCO pretrained)",
+        "custom_path": None,
     },
     "yolo11l": {
-        "path": PROJECT_ROOT / "models" / "yolo11l.pt",
         "person_classes": [0],
         "label": "YOLO11l  (COCO pretrained)",
+        "custom_path": None,
     },
     "yolo11x": {
-        "path": PROJECT_ROOT / "models" / "yolo11x.pt",
         "person_classes": [0],
         "label": "YOLO11x  (COCO pretrained)",
+        "custom_path": None,
     },
     "yolo_staff_customer": {
-        "path": PROJECT_ROOT / "models" / "yolo_staff_customer.pt",
         # Fine-tuned: class 0 = customer, class 1 = staff
+        # custom_path tells the resolver to always load from disk
+        # (this weight is not on the Ultralytics hub).
         "person_classes": [0, 1],
         "label": "yolo_staff_customer  (Fine-tuned)",
+        "custom_path": "models/yolo_staff_customer.pt",
     },
 }
 
-VIDEO_PATH    = PROJECT_ROOT / "videos" / "Dark_lighting.mp4"
-OUTPUT_BASE   = PROJECT_ROOT / "runs" / "benchmark"
+# Resolved at startup — each entry now contains a "path" key that is
+# correct for the current environment (local Path or Ultralytics str).
+MODELS: Dict[str, Dict] = _resolver.build_registry(_MODELS_META)
+
+# ── Environment-aware video path ─────────────────────────────────────────────
+if _resolver.is_kaggle:
+    _VIDEO_STR = "/kaggle/input/datasets/tusharmarscitizen/video-analysis/Dark_lighting.mp4"
+else:
+    _VIDEO_STR = str(PROJECT_ROOT / "videos" / "Dark_lighting.mp4")
+VIDEO_PATH  = Path(_VIDEO_STR)
+OUTPUT_BASE = PROJECT_ROOT / "runs" / "benchmark"
 
 SAMPLE_EVERY  = 3        # run inference on every Nth frame
 CONF_THRESH   = 0.25     # detection confidence floor (matches production config)
@@ -256,23 +283,16 @@ def run_detection_benchmark(
     out_dir = output_base / model_key
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path      = cfg["path"]
+    model_path      = cfg["path"]   # Path (local) or str (Ultralytics hub)
     person_classes  = cfg["person_classes"]
 
-    # Check model file is accessible (follow symlinks)
-    try:
-        actual_bytes = os.path.getsize(str(model_path))
-        log.info(f"  Model: {model_path.name}  ({actual_bytes / 1e6:.1f} MB)")
-        if actual_bytes < 100_000:
-            log.warning(f"  Model file is only {actual_bytes} bytes — "
-                        f"possible broken symlink or LFS pointer.")
-    except OSError as exc:
-        log.error(f"  Cannot access model file: {exc}")
-        return {"model": model_key, "label": cfg["label"], "error": str(exc)}
+    # Log what we are about to load
+    path_display = Path(model_path).name if isinstance(model_path, Path) else str(model_path)
+    log.info(f"  Model: {path_display}")
 
-    # Load model
+    # Load model via the shared resolver-aware loader
     try:
-        model = YOLO(str(model_path))
+        model = load_yolo_model(str(model_path))
         model.to(DEVICE)
     except Exception as exc:
         log.error(f"  Failed to load {model_key}: {exc}")
@@ -451,7 +471,8 @@ def run_tracking_benchmark(
     out_dir.mkdir(parents=True, exist_ok=True)
     person_classes = cfg["person_classes"]
 
-    model = YOLO(str(cfg["path"]))
+    # Load model via the shared resolver-aware loader (local or hub)
+    model = load_yolo_model(str(cfg["path"]))
     model.to(DEVICE)
     tracker = BYTETracker(args=_BenchTrackerArgs())
 
