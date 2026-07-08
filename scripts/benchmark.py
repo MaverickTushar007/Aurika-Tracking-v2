@@ -49,6 +49,7 @@ from model_resolver import ModelResolver  # noqa: E402
 # Production model loader — handles local file + Ultralytics auto-download
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 from tracker.model_loader import load_yolo_model  # noqa: E402
+from tracker.device import get_device  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -112,8 +113,8 @@ BT_BUFFER       = 30
 BT_MATCH_THRESH = 0.80
 BT_FUSE_SCORE   = True
 
-# Device — prefer MPS (Apple Silicon) then fall back to CPU
-DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
+# Device — priority order: CUDA -> MPS -> CPU
+DEVICE = get_device()
 
 # ---------------------------------------------------------------------------
 # Colour palette & annotation helpers
@@ -358,8 +359,10 @@ def run_detection_benchmark(
     # ── Cleanup ─────────────────────────────────────────────────────────────
     del model
     gc.collect()
-    if torch.backends.mps.is_available():
+    if DEVICE == "mps":
         torch.mps.empty_cache()
+    elif DEVICE == "cuda":
+        torch.cuda.empty_cache()
 
     # ── Compute metrics ──────────────────────────────────────────────────────
     lat = np.array(latencies) if latencies else np.array([0.0])
@@ -547,8 +550,10 @@ def run_tracking_benchmark(
 
     del model
     gc.collect()
-    if torch.backends.mps.is_available():
+    if DEVICE == "mps":
         torch.mps.empty_cache()
+    elif DEVICE == "cuda":
+        torch.cuda.empty_cache()
 
     # ── Post-process tracking metrics ────────────────────────────────────────
     all_ids = list(track_first.keys())
