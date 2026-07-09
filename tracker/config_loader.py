@@ -19,6 +19,16 @@ class TrackerConfig:
         self.match_thresh: float = float(tracker_params.get("match_thresh", 0.8))
         self.fuse_score: bool = bool(tracker_params.get("fuse_score", True))
         self.gmc_method: str = str(tracker_params.get("gmc_method", "none"))
+        self.adaptive_confidence_enabled: bool = bool(tracker_params.get("adaptive_confidence_enabled", True))
+        self.confidence_smoothing_alpha: float = float(tracker_params.get("confidence_smoothing_alpha", 0.3))
+        self.motion_consistency_check: bool = bool(tracker_params.get("motion_consistency_check", True))
+        self.adaptive_track_buffer_enabled: bool = bool(tracker_params.get("adaptive_track_buffer_enabled", True))
+        self.quality_score_threshold: float = float(tracker_params.get("quality_score_threshold", 0.25))
+        self.proximity_thresh: float = float(tracker_params.get("proximity_thresh", 0.5))
+        self.appearance_thresh: float = float(tracker_params.get("appearance_thresh", 0.8))
+        self.with_reid: bool = bool(tracker_params.get("with_reid", False))
+        self.model: str = str(tracker_params.get("model", "auto"))
+        self.zone_hysteresis_frames: int = int(tracker_params.get("zone_hysteresis_frames", 5))
 
 class PipelineConfig:
     """Handles environment detection, loading configs, and resolving paths."""

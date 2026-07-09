@@ -1,0 +1,25 @@
+# Restaurant Zone Configuration (1280x720 Frame Coordinates)
+zones:
+  - name: "Entrance"
+    color: [255, 128, 0] # Orange (BGR: [0, 128, 255])
+    polygon: [[0, 0], [400, 0], [400, 300], [0, 300]]
+  - name: "Waiting"
+    color: [0, 255, 255] # Cyan (BGR: [255, 255, 0])
+    polygon: [[0, 300], [400, 300], [400, 720], [0, 720]]
+  - name: "Reception"
+    color: [255, 0, 255] # Magenta (BGR: [255, 0, 255])
+    polygon: [[400, 0], [800, 0], [800, 300], [400, 300]]
+  - name: "Dining"
+    color: [0, 255, 0] # Green (BGR: [0, 255, 0])
+    polygon: [[400, 300], [800, 300], [800, 720], [400, 720]]
+  - name: "Kitchen"
+    color: [0, 0, 255] # Red (BGR: [0, 0, 255])
+    polygon: [[800, 0], [1280, 0], [1280, 720], [800, 720]]
+
+counting_lines:
+  - name: "Entrance Line"
+    color: [0, 165, 255] # Orange line
+    line: [[50, 300], [350, 300]]
+  - name: "Exit Line"
+    color: [255, 0, 128] # Blue-pink line
+    line: [[50, 600], [350, 600]]

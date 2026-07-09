@@ -1,0 +1,8 @@
+Configuration,Name,avg_lifetime,median_lifetime,max_lifetime,ids_created,fragmentation,lost_tracks,recovered_tracks,occlusion_recovery_count,avg_occlusion_duration,avg_track_confidence,avg_quality_score,fps,runtime,peak_ram,peak_gpu
+0,Baseline,98.3,20.0,2251,620,3331,3331,2732,2732,6.8,0.552,0.758,135.5,43.83,378.3,0.0
+A,EMA Only,98.3,20.0,2251,620,3331,3331,2732,2732,6.8,0.551,0.758,97.9,60.64,192.1,0.0
+B,Motion Filter Only,97.9,20.0,2251,620,3331,3331,2732,2732,6.8,0.551,0.757,145.7,40.75,165.4,0.0
+C,Adaptive Buffer Only,87.7,18.0,2251,692,3255,3255,2585,2585,5.6,0.553,0.752,160.6,36.97,173.7,0.0
+D,Adaptive Confidence Only,98.3,20.0,2251,620,3331,3331,2732,2732,6.8,0.552,0.758,109.6,54.17,154.1,0.0
+E,Quality Score Only,107.7,26.0,2251,558,3147,3147,2610,2610,6.8,0.555,0.765,155.0,38.3,160.6,0.0
+F,All Features Enabled,95.5,23.0,2251,623,3046,3046,2445,2445,5.6,0.555,0.759,120.2,49.39,152.6,0.0

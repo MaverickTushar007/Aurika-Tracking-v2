@@ -14,13 +14,19 @@ Aurika-Tracking-v2/
 ├── configs/
 │   └── config.yaml             # Single-point tracker configuration (paths + ByteTrack params)
 ├── scripts/
-│   ├── benchmark.py            # Two-stage detector benchmark (detection → top-2 → tracking)
-│   └── model_resolver.py       # Environment-agnostic model path resolver (local / Kaggle)
+│   ├── benchmark.py            # Two-stage detector benchmark (supports --use-cache)
+│   ├── model_resolver.py       # Environment-agnostic model path resolver (local / Kaggle)
+│   ├── optimize_tracker.py     # Hyperparameter optimization sweep tool
+│   ├── cache_detections.py     # YOLO inference cache generator (Stage A)
+│   └── run_tracker_cached.py   # Cached detections tracker runner (Stage B)
 ├── tracker/
 │   ├── config_loader.py        # Dynamic local vs Kaggle path mapping & config parser
 │   ├── model_loader.py         # YOLO model loader (local file or Ultralytics hub)
 │   ├── video_loader.py         # OpenCV VideoCapture wrapper with termination diagnostics
 │   ├── tracking_engine.py      # ByteTrack wrapper (Ultralytics BYTETracker)
+│   ├── tracker_factory.py      # Factory abstraction to instantiate ByteTrack/BoT-SORT
+│   ├── device.py               # Reusable priority-based device selection (CUDA -> MPS -> CPU)
+│   ├── detection_cache.py      # Detection cache serializer & metadata validator
 │   └── visualization.py        # Frame drawing engine with premium aesthetics
 ├── runs/                       # Output destination (generated dynamically)
 ├── requirements.txt            # Python package dependencies
@@ -29,6 +35,96 @@ Aurika-Tracking-v2/
 ```
 
 ---
+
+## Detection Caching Infrastructure (Experiment 003)
+
+To accelerate tracker experiments, the pipeline supports a decoupled **Detection Cache Subsystem** that divides tracking into two stages:
+
+### Stage A: One-time Detector Inference
+Generate a serialized cache of YOLO detections (storing bounding boxes, confidence, class IDs) and metadata (video hash, model version):
+```bash
+python scripts/cache_detections.py --model yolo11l --video videos/Dark_lighting.mp4
+```
+This produces `runs/cache/detections.pkl` and `runs/cache/metadata.json`.
+
+### Stage B: Cached Tracker Runner (Zero GPU/Detector Overhead)
+Evaluate different trackers, parameters, or sweeps using the pre-calculated detections in **2 minutes** instead of 15 minutes (a **6-7x speedup**):
+```bash
+python scripts/run_tracker_cached.py --tracker bytetrack --cache runs/cache/detections.pkl --sample-every 3
+```
+
+### Cached Benchmarking
+Execute the benchmark suite using cached detections:
+```bash
+python scripts/benchmark.py --mode tracker --model yolo11l --tracker bytetrack --use-cache
+```
+
+The cached runs produce **100% identical metrics, tracks, and outputs** (within floating-point precision) to their non-cached counterparts, verified by automatic metadata hash checking.
+
+---
+
+## Restaurant Intelligence Layer (Experiment 004)
+
+The pipeline integrates a Restaurant Intelligence Layer to extract spatial-temporal analytics from tracked people:
+
+- **Zone Monitoring:** Tracks live occupancy and dwell times across configurable polygon zones (e.g. Dining, Reception, Waiting, Entrance, Kitchen) loaded from `configs/zones.yaml`.
+- **Entries & Exits:** Employs virtual counting lines to log client traffic flows (only counting each ID once).
+- **Zone Transitions:** Tracks customer paths and transition statistics between zones.
+- **Trajectory Heatmap:** Smooths and visualizes residence hotspots, outputting `heatmap.png`.
+- **Structured CSV Logs:** Generates granular exports for events, occupancy, zone stats, and track lifetimes.
+
+### Running Analytics
+
+Run the analytics pipeline using pre-cached detections:
+```bash
+python scripts/run_analytics.py --use-cache --cache runs/cache/detections.pkl
+```
+
+This generates the following outputs in `runs/analytics/`:
+- `events.csv`: Granular event log (e.g. entering/exiting zones, line crossings).
+- `occupancy.csv`: Live occupancy counts per zone over time.
+- `zone_statistics.csv`: Vistor transition counts and average zone dwell times.
+- `dwell_times.csv`: Overall visitor dwell durations.
+- `heatmap.png`: Trajectory hotspot visualization.
+- `analytics_output.mp4`: Annotated video with zone boundaries, live occupants, entry/exit counters, and dwell timers.
+- `analytics_report.md`: Executive summary with store recommendations.
+
+---
+
+## Interactive Scene Calibration (Experiment 005)
+
+To replace manual coordinate entry, the pipeline includes a mouse-driven **Interactive Calibration GUI** to draw polygons and counters on a static background reference frame extracted from the camera feed.
+
+### Calibrating layout profiles
+
+Run the calibrator on a video to draw zones and counting lines:
+```bash
+python scripts/calibrate_scene.py --video videos/Dark_lighting.mp4 --output configs/restaurant_default.yaml
+```
+
+**GUI Instructions:**
+- Press `n` on keyboad ➔ Type zone name in console ➔ Left-click vertices on the image.
+- Press `l` on keyboard ➔ Type counting line name in console ➔ Click start point, then end point.
+- Press `c` ➔ Save/close the active polygon zone or counting line.
+- Press `d` ➔ Delete the last created zone/line.
+- Press `s` ➔ Save coordinates and exit.
+- Press `q` or `ESC` ➔ Exit without saving.
+
+This automatically saves the configuration values under `configs/restaurant_default.yaml` and reference frame files inside `runs/calibration/`:
+- `background_snapshot.png`: Clean background camera snapshot frame.
+- `preview.png` & `scene_layout.png`: Layout blueprints.
+- `calibration_report.md`: Coordinates specifications summary report.
+
+### Loading Layout Profiles
+
+You can calibrate and store multiple camera layouts (e.g. `configs/restaurant_A.yaml`, `configs/restaurant_B.yaml`) and pass them to the analytics runner using the `--layout` argument:
+```bash
+python scripts/run_analytics.py --use-cache --cache runs/cache/detections.pkl --layout restaurant_A
+```
+
+---
+
+
 
 ## Features
 
@@ -108,3 +204,24 @@ runs/benchmark/
 | YOLO11m | — | — | 88.6 ms | Stage 2 only |
 | **YOLO11l** | **10.19** | **514** | 111.5 ms | ✅ **Production winner** |
 | YOLO11x | — | — | 225.4 ms | Eliminated (too slow) |
+
+---
+
+## Track Memory Layer (Experiment 008)
+
+The pipeline integrates a **Track Memory Layer** that acts as the single source of truth for behavioral state tracking:
+
+- **Persistent TrackState:** Continuously updates 33 lifecycle and motion properties (role, lifecycle status, zone exit/entry dwell times, velocities, trajectory vectors, visibility index, quality score).
+- **Lifecycle State Machine:** Strictly routes states through a deterministic state machine: `NEW` ➔ `CONFIRMED` ➔ `ACTIVE` ➔ `TEMP_OCCLUDED` ➔ `RECOVERED` ➔ `EXITED` ➔ `ARCHIVED`.
+- **Event Engine:** Records lifecycle and milestone events (such as `TrackCreated`, `ZoneEntered`, `WaitingStarted`, `DiningFinished`).
+- **Timelines & Transition Matrix:** Automatically generates chronological customer flow matrices and timelines.
+
+### Running Experiment 008
+
+To run the persistent tracking memory simulation:
+```bash
+python scripts/run_experiment_008.py
+```
+
+This validates all track state lifecycle transitions and generates output reports under `runs/experiment008/`.
+

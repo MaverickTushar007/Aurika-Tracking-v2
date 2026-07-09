@@ -18,6 +18,9 @@ from tracker.model_loader import load_yolo_model
 from tracker.video_loader import VideoLoader, TERM_EOF, TERM_READ_FAILURE
 from tracker.tracking_engine import TrackingEngine
 from tracker.visualization import annotate_frame
+from tracker.device import get_device
+
+DEVICE = get_device()
 
 def main():
     parser = argparse.ArgumentParser(description="Aurika Person Tracking Pipeline (v2)")
@@ -47,6 +50,7 @@ def main():
     # 2. Load YOLO model
     try:
         model = load_yolo_model(config.model_path)
+        model.to(DEVICE)
     except Exception as e:
         logger.error(f"Error loading model: {e}")
         return
@@ -108,7 +112,7 @@ def main():
             
             # Run YOLO prediction
             # verbose=False reduces terminal clutter during execution
-            results = model.predict(frame, conf=conf_thresh, verbose=False)[0]
+            results = model.predict(frame, conf=conf_thresh, device=DEVICE, verbose=False)[0]
             
             # Run tracking update (automatically filters to only person classes)
             tracks = tracker.update(results, frame)

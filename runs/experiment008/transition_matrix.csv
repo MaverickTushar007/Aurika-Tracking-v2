@@ -1,0 +1,6 @@
+From / To,Entrance,Reception,Waiting Area,Dining,Kitchen
+Entrance,0,0,0,0,19
+Reception,0,0,1,0,1
+Waiting Area,0,0,0,4,0
+Dining,0,0,1,0,4
+Kitchen,23,2,1,11,0

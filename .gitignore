@@ -4,3 +4,5 @@
 kaggle_output/
 runs/benchmark/**/*.mp4
 runs/output.mp4
+__pycache__/
+*.pyc

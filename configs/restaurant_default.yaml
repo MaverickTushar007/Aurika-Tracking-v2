@@ -1,0 +1,48 @@
+counting_lines:
+  - name: Entrance Line
+    color: [0, 165, 255]
+    p1: [133, 0]
+    p2: [133, 720]
+    direction: in
+  - name: Exit Line
+    color: [255, 0, 128]
+    p1: [133, 0]
+    p2: [133, 720]
+    direction: out
+
+zones:
+  - name: Entrance
+    color: [255, 128, 0]
+    polygon:
+      - [0, 0]
+      - [133, 0]
+      - [133, 720]
+      - [0, 720]
+  - name: Reception
+    color: [255, 0, 255]
+    polygon:
+      - [133, 120]
+      - [321, 120]
+      - [321, 240]
+      - [133, 240]
+  - name: Waiting Area
+    color: [0, 255, 255]
+    polygon:
+      - [321, 0]
+      - [533, 0]
+      - [533, 267]
+      - [321, 267]
+  - name: Dining
+    color: [0, 255, 0]
+    polygon:
+      - [533, 0]
+      - [1280, 0]
+      - [1280, 720]
+      - [533, 720]
+  - name: Kitchen
+    color: [0, 0, 255]
+    polygon:
+      - [133, 240]
+      - [321, 240]
+      - [321, 720]
+      - [133, 720]

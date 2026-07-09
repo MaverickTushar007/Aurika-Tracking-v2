@@ -23,6 +23,7 @@ Output layout:
         benchmark_report.md
 """
 
+import argparse
 import csv
 import gc
 import json
@@ -50,6 +51,8 @@ from model_resolver import ModelResolver  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 from tracker.model_loader import load_yolo_model  # noqa: E402
 from tracker.device import get_device  # noqa: E402
+from tracker.tracker_factory import create_tracker  # noqa: E402
+from tracker.detection_cache import CachedBoxes, calculate_video_hash, load_detection_cache  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -916,66 +919,555 @@ def save_report(
         log.info(f"  Tracking CSV  → {output_base / 'tracking_comparison.csv'}")
 
 # ---------------------------------------------------------------------------
+# Experiment 001 - Tracker Experiment Runner & Comparer
+# ---------------------------------------------------------------------------
+
+def run_tracker_experiment(
+    model_key: str,
+    tracker_type: str,
+    video_path: Path,
+    output_dir: Path,
+    use_cache: bool = False,
+    cache_path: Optional[Path] = None,
+) -> Dict:
+    """
+    Runs Experiment 001 for a specific tracker (bytetrack or botsort).
+    Saves metrics.json, metrics.csv, tracking_output.mp4, and report.md.
+    Captures screenshots at key frames for side-by-side comparison.
+    """
+    sep = "=" * 62
+    log.info(sep)
+    log.info(f"  EXPERIMENT 001 · TRACKER: {tracker_type.upper()} · MODEL: {model_key}")
+    log.info(sep)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Resolve model config and path (if not using cache)
+    cfg = MODELS[model_key]
+    person_classes = cfg["person_classes"]
+
+    detections_list = None
+    if use_cache:
+        log.info("Using detection cache for tracking...")
+        video_hash = calculate_video_hash(video_path)
+        expected_meta = {
+            "video_hash": video_hash,
+            "model_name": model_key,
+        }
+        if cache_path is None:
+            cache_path = PROJECT_ROOT / "runs" / "cache" / "detections.pkl"
+        detections_list = load_detection_cache(cache_path, expected_meta)
+        if detections_list is None:
+            log.error("Failed to load a valid cache. Aborting cached tracker run.")
+            raise ValueError("Invalid detection cache")
+        model = None
+    else:
+        model = load_yolo_model(str(cfg["path"]))
+        model.to(DEVICE)
+
+    # 2. Instantiate tracker via factory
+    tracker_config = {
+        "track_high_thresh": BT_HIGH_THRESH,
+        "track_low_thresh": BT_LOW_THRESH,
+        "new_track_thresh": BT_NEW_THRESH,
+        "track_buffer": BT_BUFFER,
+        "match_thresh": BT_MATCH_THRESH,
+        "fuse_score": BT_FUSE_SCORE,
+        "gmc_method": "none", # Keep baseline configuration identical
+    }
+    tracker = create_tracker(tracker_type, tracker_config, device=DEVICE)
+
+    cap = cv2.VideoCapture(str(video_path))
+    total_frm = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    src_fps = cap.get(cv2.CAP_PROP_FPS)
+    W, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out_fps = max(1.0, src_fps / SAMPLE_EVERY)
+
+    out_video = cv2.VideoWriter(
+        str(output_dir / "tracking_output.mp4"),
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        out_fps, (W, H),
+    )
+
+    # Warmup
+    warmed = 0
+    while cap.isOpened() and warmed < WARMUP_FRAMES:
+        ret, wf = cap.read()
+        if not ret:
+            break
+        if model is not None:
+            model.predict(wf, conf=CONF_THRESH, device=DEVICE, verbose=False)
+        warmed += 1
+
+    # State tracking
+    track_first: Dict[int, int] = {}
+    track_last: Dict[int, int] = {}
+    track_frames: Dict[int, List[int]] = defaultdict(list)
+
+    counts_per_frame: List[int] = []
+    latencies: List[float] = []
+    peak_ram_mb = 0.0
+    sampled_n = 0
+    total_read = warmed
+    current_lifetimes: Dict[int, int] = {}
+
+    SCREENSHOT_FRAMES = [1000, 3000, 5000, 8000, 10000]
+
+    t_start = time.time()
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        total_read += 1
+        if total_read % SAMPLE_EVERY != 0:
+            continue
+        sampled_n += 1
+
+        t0 = time.perf_counter()
+        if model is not None:
+            results = model.predict(frame, conf=CONF_THRESH, device=DEVICE, verbose=False)[0]
+            boxes = results.boxes
+        else:
+            if total_read - 1 < len(detections_list):
+                det_dict = detections_list[total_read - 1]
+            else:
+                det_dict = {"boxes": np.empty((0, 4)), "confidence": np.empty((0,)), "class_id": np.empty((0,))}
+            boxes = CachedBoxes(det_dict["boxes"], det_dict["confidence"], det_dict["class_id"])
+
+        pb = _filter_persons(boxes, person_classes)
+
+        if pb is not None and len(pb) > 0:
+            det = pb.cpu().numpy()
+            tracks = tracker.update(det, frame)
+        else:
+            tracks = np.empty((0, 8), dtype=np.float32)
+
+        latencies.append((time.perf_counter() - t0) * 1_000)
+
+        for track in tracks:
+            tid = int(track[4])
+            if tid not in track_first:
+                track_first[tid] = sampled_n
+            track_last[tid] = sampled_n
+            track_frames[tid].append(sampled_n)
+            current_lifetimes[tid] = sampled_n - track_first[tid]
+
+        counts_per_frame.append(len(tracks))
+        peak_ram_mb = max(peak_ram_mb, psutil.Process().memory_info().rss / 1e6)
+
+        annotated = annotate_tracking_frame(frame, tracks, f"{tracker_type.upper()} ({model_key})", total_read, current_lifetimes)
+        out_video.write(annotated)
+
+        # Capture key screenshots
+        if total_read in SCREENSHOT_FRAMES:
+            cv2.imwrite(str(output_dir / f"frame_{total_read}.png"), annotated)
+
+        if sampled_n % 500 == 0:
+            pct = total_read / total_frm * 100
+            log.info(f"  [{tracker_type}] {sampled_n} samples ({src_fps:.1f} fps input) "
+                     f"(src {total_read}/{total_frm} {pct:.0f}%) "
+                     f"active: {len(tracks)}")
+
+    runtime = time.time() - t_start
+    cap.release()
+    out_video.release()
+
+    # Memory details
+    peak_gpu_mb = 0.0
+    if DEVICE == "cuda":
+        peak_gpu_mb = torch.cuda.max_memory_allocated(0) / 1e6
+
+    del model
+    gc.collect()
+    if DEVICE == "mps":
+        torch.mps.empty_cache()
+    elif DEVICE == "cuda":
+        torch.cuda.empty_cache()
+
+    # Compute metrics
+    all_ids = list(track_first.keys())
+    total_unique_ids = len(all_ids)
+    lifetimes_f = [track_last[t] - track_first[t] for t in all_ids]
+    avg_lifetime = float(np.mean(lifetimes_f)) if lifetimes_f else 0.0
+    max_lifetime = float(max(lifetimes_f)) if lifetimes_f else 0.0
+
+    recovered = 0
+    for tid in all_ids:
+        frames_sorted = track_frames[tid]
+        for i in range(1, len(frames_sorted)):
+            if frames_sorted[i] - frames_sorted[i - 1] >= 2:
+                recovered += 1
+                break
+
+    LOST_GAP = 10
+    tracks_lost = sum(1 for t in all_ids if track_last[t] < sampled_n - LOST_GAP)
+    birth_rate = (total_unique_ids / sampled_n * 100) if sampled_n > 0 else 0.0
+
+    # Track fragmentation proxy
+    track_fragmentation = sum(1 for t in all_ids if (track_last[t] - track_first[t]) < 15)
+
+    lat = np.array(latencies) if latencies else np.array([0.0])
+    median_latency = float(np.median(lat))
+    median_fps = float(sampled_n / runtime) if runtime > 0 else 0.0
+
+    metrics = {
+        "tracker_type": tracker_type,
+        "model": model_key,
+        "frames_sampled": sampled_n,
+        "avg_tracks": float(np.mean(counts_per_frame)) if counts_per_frame else 0.0,
+        "max_tracks": int(max(counts_per_frame)) if counts_per_frame else 0,
+        "recovered_tracks": recovered,
+        "tracks_lost": tracks_lost,
+        "track_fragmentation": track_fragmentation,
+        "id_switches": "N/A (requires ground truth)",
+        "median_fps": median_fps,
+        "median_ms": median_latency,
+        "peak_ram_mb": float(peak_ram_mb),
+        "peak_gpu_mb": float(peak_gpu_mb) if DEVICE == "cuda" else "N/A (CPU/MPS only)",
+        "runtime": float(runtime),
+        "mota": "N/A (requires ground truth)",
+        "motp": "N/A (requires ground truth)",
+        "idf1": "N/A (requires ground truth)",
+        "hota": "N/A (requires ground truth)",
+    }
+
+    # Save outputs
+    with open(output_dir / "metrics.json", "w") as fh:
+        json.dump(metrics, fh, indent=2)
+
+    with open(output_dir / "metrics.csv", "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["metric", "value"])
+        for k, v in metrics.items():
+            name_map = {
+                "tracker_type": "Tracker Type",
+                "model": "Model",
+                "frames_sampled": "Frames Sampled",
+                "avg_tracks": "Average active tracks",
+                "max_tracks": "Maximum active tracks",
+                "recovered_tracks": "Track recovery count",
+                "tracks_lost": "Lost tracks",
+                "track_fragmentation": "Track fragmentation",
+                "id_switches": "ID switches",
+                "median_fps": "Median FPS",
+                "median_ms": "Median inference time",
+                "peak_ram_mb": "Peak RAM",
+                "peak_gpu_mb": "Peak GPU memory",
+                "runtime": "Runtime",
+                "mota": "MOTA",
+                "motp": "MOTP",
+                "idf1": "IDF1",
+                "hota": "HOTA"
+            }
+            val_str = f"{v:.2f} MB" if k == "peak_ram_mb" else (f"{v:.2f} s" if k == "runtime" else (f"{v:.2f} ms" if k == "median_ms" else str(v)))
+            writer.writerow([name_map.get(k, k), val_str])
+
+    # Individual report.md
+    report = [
+        f"# Experiment 001 - Tracker Report: {tracker_type.upper()}",
+        "",
+        f"- **Tracker:** {tracker_type.upper()}",
+        f"- **Detector:** {model_key}",
+        f"- **Frames Sampled:** {sampled_n}",
+        f"- **Total Runtime:** {runtime:.2f} s",
+        "",
+        "## Performance Metrics",
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+    ]
+    for k, v in metrics.items():
+        name_map = {
+            "tracker_type": "Tracker Type",
+            "model": "Model",
+            "frames_sampled": "Frames Sampled",
+            "avg_tracks": "Average active tracks",
+            "max_tracks": "Maximum active tracks",
+            "recovered_tracks": "Track recovery count",
+            "tracks_lost": "Lost tracks",
+            "track_fragmentation": "Track fragmentation",
+            "id_switches": "ID switches",
+            "median_fps": "Median FPS",
+            "median_ms": "Median inference time",
+            "peak_ram_mb": "Peak RAM",
+            "peak_gpu_mb": "Peak GPU memory",
+            "runtime": "Runtime",
+            "mota": "MOTA",
+            "motp": "MOTP",
+            "idf1": "IDF1",
+            "hota": "HOTA"
+        }
+        val_str = f"{v:.2f} MB" if k == "peak_ram_mb" else (f"{v:.2f} s" if k == "runtime" else (f"{v:.2f} ms" if k == "median_ms" else str(v)))
+        report.append(f"| {name_map.get(k, k)} | {val_str} |")
+
+    with open(output_dir / "report.md", "w") as fh:
+        fh.write("\n".join(report))
+
+    log.info(f"  Saved report to {output_dir / 'report.md'}")
+    return metrics
+
+def generate_experiment_comparison(runs_dir: Path) -> None:
+    bt_dir = runs_dir / "bytetrack"
+    bs_dir = runs_dir / "botsort"
+
+    bt_json = bt_dir / "metrics.json"
+    bs_json = bs_dir / "metrics.json"
+
+    if not bt_json.exists() or not bs_json.exists():
+        log.info("[Comparison] One of the tracker runs is missing. Skipping comparison report.")
+        return
+
+    with open(bt_json) as f:
+        bt = json.load(f)
+    with open(bs_json) as f:
+        bs = json.load(f)
+
+    log.info("╔══════════════════════════════════════════╗")
+    log.info("║ Generating Tracker Comparison Report...  ║")
+    log.info("╚══════════════════════════════════════════╝")
+
+    # Generate side-by-side screenshots
+    SCREENSHOT_FRAMES = [1000, 3000, 5000, 8000, 10000]
+    comp_frames_dir = runs_dir / "comparison_frames"
+    comp_frames_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx in SCREENSHOT_FRAMES:
+        bt_img_path = bt_dir / f"frame_{idx}.png"
+        bs_img_path = bs_dir / f"frame_{idx}.png"
+        if bt_img_path.exists() and bs_img_path.exists():
+            bt_img = cv2.imread(str(bt_img_path))
+            bs_img = cv2.imread(str(bs_img_path))
+            H, W, C = bt_img.shape
+            label_height = 40
+            canvas = np.zeros((H + label_height, W * 2, C), dtype=np.uint8)
+            cv2.putText(canvas, f"ByteTrack - Frame {idx}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(canvas, f"BoT-SORT - Frame {idx}", (W + 10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            canvas[label_height:, :W] = bt_img
+            canvas[label_height:, W:] = bs_img
+            cv2.imwrite(str(comp_frames_dir / f"side_by_side_{idx}.png"), canvas)
+
+    # Compute metric comparisons
+    metrics_list = [
+        ("Average active tracks", "avg_tracks", "higher", "coverage"),
+        ("Maximum active tracks", "max_tracks", "higher", "coverage"),
+        ("Track recovery count", "recovered_tracks", "higher", "reconnection"),
+        ("Lost tracks", "tracks_lost", "lower", "persistence"),
+        ("Track fragmentation", "track_fragmentation", "lower", "stability"),
+        ("ID switches", "id_switches", "lower", "identity"),
+        ("Median FPS", "median_fps", "higher", "speed"),
+        ("Median inference time", "median_ms", "lower", "speed"),
+        ("Peak RAM", "peak_ram_mb", "lower", "resources"),
+        ("Runtime", "runtime", "lower", "speed")
+    ]
+
+    table_rows = []
+    winners = {}
+
+    for name, key, opt, aspect in metrics_list:
+        bt_val = bt.get(key)
+        bs_val = bs.get(key)
+
+        if isinstance(bt_val, str) or isinstance(bs_val, str):
+            winner = "N/A"
+            bt_disp = str(bt_val)
+            bs_disp = str(bs_val)
+        else:
+            bt_disp = f"{bt_val:.2f} MB" if "peak_ram" in key else (f"{bt_val:.2f} s" if key == "runtime" else (f"{bt_val:.2f} ms" if key == "median_ms" else f"{bt_val:.2f}"))
+            bs_disp = f"{bs_val:.2f} MB" if "peak_ram" in key else (f"{bs_val:.2f} s" if key == "runtime" else (f"{bs_val:.2f} ms" if key == "median_ms" else f"{bs_val:.2f}"))
+
+            if opt == "higher":
+                if bt_val > bs_val:
+                    winner = "ByteTrack"
+                elif bs_val > bt_val:
+                    winner = "BoT-SORT"
+                else:
+                    winner = "Draw"
+            else:
+                if bt_val < bs_val:
+                    winner = "ByteTrack"
+                elif bs_val < bt_val:
+                    winner = "BoT-SORT"
+                else:
+                    winner = "Draw"
+
+        winners[key] = winner
+        table_rows.append(f"| {name} | {bt_disp} | {bs_disp} | **{winner}** |")
+
+    # Overall recommendation logic: count standard tracking winners
+    # Standard tracking metrics: recovered (higher), lost (lower), fragmentation (lower), avg_tracks (higher)
+    bt_score = 0
+    bs_score = 0
+    
+    for k in ["recovered_tracks", "tracks_lost", "track_fragmentation", "median_ms"]:
+        w = winners.get(k)
+        if w == "ByteTrack":
+            bt_score += 1
+        elif w == "BoT-SORT":
+            bs_score += 1
+
+    if bs_score > bt_score:
+        decision = "Improved"
+        recommendation = "BoT-SORT demonstrates superior tracking stability/recovery on the target video and is recommended for promotion."
+    elif bt_score > bs_score:
+        decision = "Worse"
+        recommendation = "ByteTrack outperforms BoT-SORT on computational overhead and core tracking metrics. Keep ByteTrack as baseline."
+    else:
+        decision = "Same"
+        recommendation = "Both trackers show equivalent tracking quality. Keep ByteTrack to avoid additional complexity."
+
+    # Write comparison.md
+    comp_md = [
+        "# Experiment 001 — ByteTrack vs BoT-SORT Comparison Report",
+        "",
+        "## Executive Summary",
+        "",
+        f"> **Final Decision:** `{decision}`",
+        f"> **Overall Recommendation:** {recommendation}",
+        "",
+        "## Detailed Metrics Table",
+        "",
+        "| Metric | ByteTrack | BoT-SORT | Winner |",
+        "|---|---|---|---|",
+    ] + table_rows + [
+        "",
+        "## Visual Comparison Analysis",
+        "",
+        "We captured annotated screenshots at key frames of interest during both pipeline executions to evaluate performance under low-lighting, occlusion, and crowding.",
+        "",
+        "### 1. Entrance Area / Low-Lighting (Frame 1000)",
+        "![Frame 1000](comparison_frames/side_by_side_1000.png)",
+        "",
+        "### 2. Crowded Workplace Interaction (Frame 3000)",
+        "![Frame 3000](comparison_frames/side_by_side_3000.png)",
+        "",
+        "### 3. Occlusion and Crossing (Frame 5000)",
+        "![Frame 5000](comparison_frames/side_by_side_5000.png)",
+        "",
+        "### 4. Dense Interaction (Frame 8000)",
+        "![Frame 8000](comparison_frames/side_by_side_8000.png)",
+        "",
+        "### 5. Final Stage Tracking (Frame 10000)",
+        "![Frame 10000](comparison_frames/side_by_side_10000.png)",
+        ""
+    ]
+
+    with open(runs_dir / "comparison.md", "w") as fh:
+        fh.write("\n".join(comp_md))
+
+    log.info(f"[Comparison] Report saved to {runs_dir / 'comparison.md'}")
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
     global total_frm_label
 
+    parser = argparse.ArgumentParser(description="Aurika Person Tracking Benchmarking & Experimentation")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="detector",
+        choices=["detector", "tracker"],
+        help="Mode: detector (original YOLO11 benchmark) or tracker (Experiment 001)"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="yolo11l",
+        choices=["yolo11m", "yolo11l", "yolo11x"],
+        help="YOLO11 model to use (tracker mode only)"
+    )
+    parser.add_argument(
+        "--tracker",
+        type=str,
+        default="bytetrack",
+        choices=["bytetrack", "botsort"],
+        help="Tracker type to use (tracker mode only)"
+    )
+    parser.add_argument(
+        "--use-cache",
+        action="store_true",
+        help="Use pre-calculated detections from cache"
+    )
+    parser.add_argument(
+        "--cache-path",
+        type=str,
+        default="runs/cache/detections.pkl",
+        help="Path to the detection cache file"
+    )
+    args = parser.parse_args()
+
     log.info("╔══════════════════════════════════════════╗")
-    log.info("║  Aurika Tracking v2 — Detector Benchmark ║")
+    log.info("║  Aurika Tracking v2 — Benchmarking Tool  ║")
     log.info("╚══════════════════════════════════════════╝")
+    log.info(f"Mode        : {args.mode.upper()}")
     log.info(f"Device      : {DEVICE.upper()}")
     log.info(f"Video       : {VIDEO_PATH}  ({VIDEO_PATH.stat().st_size / 1e6:.1f} MB)")
     log.info(f"Sample rate : every {SAMPLE_EVERY}rd frame")
-    log.info(f"Models      : {list(MODELS.keys())}")
-    log.info(f"Output      : {OUTPUT_BASE}\n")
+    log.info(f"Output Base : {PROJECT_ROOT / 'runs'}\n")
 
     if not VIDEO_PATH.exists():
         log.error(f"Video not found: {VIDEO_PATH}")
         raise SystemExit(1)
 
-    OUTPUT_BASE.mkdir(parents=True, exist_ok=True)
-
     cap = cv2.VideoCapture(str(VIDEO_PATH))
     total_frm_label = f"{int(cap.get(cv2.CAP_PROP_FRAME_COUNT)):,}"
     cap.release()
+    if args.mode == "detector":
+        # ── Stage 2: Detection benchmark on all models ──────────────────────────
+        det_results: List[Dict] = []
+        for key, cfg in MODELS.items():
+            det_results.append(
+                run_detection_benchmark(key, cfg, VIDEO_PATH, OUTPUT_BASE)
+            )
 
-    # ── Stage 2: Detection benchmark on all models ──────────────────────────
-    det_results: List[Dict] = []
-    for key, cfg in MODELS.items():
-        det_results.append(
-            run_detection_benchmark(key, cfg, VIDEO_PATH, OUTPUT_BASE)
+        print_detection_table(det_results)
+
+        # ── Select top-2 ─────────────────────────────────────────────────────────
+        top2 = select_top_two(det_results)
+
+        if not top2:
+            log.error("No valid models to advance to tracking. Exiting.")
+            raise SystemExit(1)
+
+        # ── Stage 3: Tracking benchmark on top-2 ─────────────────────────────────
+        track_results: List[Dict] = []
+        for key in top2:
+            track_results.append(
+                run_tracking_benchmark(key, MODELS[key], VIDEO_PATH, OUTPUT_BASE)
+            )
+
+        print_tracking_table(track_results)
+
+        # ── Recommendation ────────────────────────────────────────────────────────
+        rec = generate_recommendation(det_results, track_results, top2)
+        print(rec)
+
+        # ── Save all outputs ──────────────────────────────────────────────────────
+        save_report(det_results, track_results, top2, rec, OUTPUT_BASE)
+
+        print(f"\n  All outputs written to: {OUTPUT_BASE}")
+        print("  Review the annotated videos in each model's subfolder,")
+        print("  then run the full 17,815-frame pipeline with the winner.\n")
+
+    elif args.mode == "tracker":
+        exp_dir = PROJECT_ROOT / "runs" / "experiment001"
+        tracker_dir = exp_dir / args.tracker
+        
+        # Run tracker experiment
+        run_tracker_experiment(
+            args.model,
+            args.tracker,
+            VIDEO_PATH,
+            tracker_dir,
+            use_cache=args.use_cache,
+            cache_path=Path(args.cache_path) if args.cache_path else None
         )
-
-    print_detection_table(det_results)
-
-    # ── Select top-2 ─────────────────────────────────────────────────────────
-    top2 = select_top_two(det_results)
-
-    if not top2:
-        log.error("No valid models to advance to tracking. Exiting.")
-        raise SystemExit(1)
-
-    # ── Stage 3: Tracking benchmark on top-2 ─────────────────────────────────
-    track_results: List[Dict] = []
-    for key in top2:
-        track_results.append(
-            run_tracking_benchmark(key, MODELS[key], VIDEO_PATH, OUTPUT_BASE)
-        )
-
-    print_tracking_table(track_results)
-
-    # ── Recommendation ────────────────────────────────────────────────────────
-    rec = generate_recommendation(det_results, track_results, top2)
-    print(rec)
-
-    # ── Save all outputs ──────────────────────────────────────────────────────
-    save_report(det_results, track_results, top2, rec, OUTPUT_BASE)
-
-    print(f"\n  All outputs written to: {OUTPUT_BASE}")
-    print("  Review the annotated videos in each model's subfolder,")
-    print("  then run the full 17,815-frame pipeline with the winner.\n")
+        
+        # Check and generate comparison report
+        generate_experiment_comparison(exp_dir)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,20 @@
+{
+  "tracker_type": "bytetrack",
+  "model": "yolo11l",
+  "frames_sampled": 5937,
+  "avg_tracks": 10.191342428836112,
+  "max_tracks": 19,
+  "recovered_tracks": 514,
+  "tracks_lost": 707,
+  "track_fragmentation": 271,
+  "id_switches": "N/A (requires ground truth)",
+  "median_fps": 46.885900757729296,
+  "median_ms": 1.6292499494738877,
+  "peak_ram_mb": 457.261056,
+  "peak_gpu_mb": "N/A (CPU/MPS only)",
+  "runtime": 126.62655305862427,
+  "mota": "N/A (requires ground truth)",
+  "motp": "N/A (requires ground truth)",
+  "idf1": "N/A (requires ground truth)",
+  "hota": "N/A (requires ground truth)"
+}

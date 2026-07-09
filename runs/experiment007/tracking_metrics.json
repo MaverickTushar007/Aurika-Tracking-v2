@@ -1,0 +1,19 @@
+{
+  "baseline": {
+    "total_tracks": 1248,
+    "average_lifetime_frames": 148.7,
+    "total_fragmentations": 4678,
+    "total_recoveries": 3456
+  },
+  "improved": {
+    "total_tracks": 1234,
+    "average_lifetime_frames": 147.6,
+    "total_fragmentations": 4202,
+    "total_recoveries": 2999
+  },
+  "performance": {
+    "total_frames_processed": 17815,
+    "execution_time_seconds": 388.14,
+    "fps_average": 45.9
+  }
+}

@@ -1,0 +1,3 @@
+Tracker,Avg Waiting Time,Queue Stability (StdDev),Zone Transitions
+ByteTrack,8.83,0.444,504
+BoT-SORT+OSNet,9.48,0.454,504

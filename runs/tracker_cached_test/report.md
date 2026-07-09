@@ -1,0 +1,28 @@
+# Aurika Tracking v2 — Cached Run Report: BYTETRACK
+
+- **Tracker:** BYTETRACK
+- **Cache Source:** `detections.pkl`
+- **Frames Sampled:** 5938
+- **Total Runtime:** 128.70 s
+- **Median Processing Speed:** 46.1 FPS
+
+## Performance Metrics Table
+
+| Metric | Value |
+|---|---|
+| tracker_type | bytetrack |
+| frames_sampled | 5938 |
+| avg_tracks | 10.262041091276524 |
+| max_tracks | 19 |
+| recovered_tracks | 449 |
+| tracks_lost | 603 |
+| track_fragmentation | 231 |
+| id_switches | N/A (requires ground truth) |
+| median_fps | 46.138856823028924 |
+| median_ms | 1.696728984825313 |
+| peak_ram_mb | 486.621184 |
+| runtime | 128.69846391677856 |
+| mota | N/A (requires ground truth) |
+| motp | N/A (requires ground truth) |
+| idf1 | N/A (requires ground truth) |
+| hota | N/A (requires ground truth) |

@@ -1,0 +1,19 @@
+{
+  "validation_report": {
+    "unique_track_state_per_id": true,
+    "valid_lifecycle_transitions": true,
+    "no_duplicated_events": true,
+    "no_negative_dwell_times": true,
+    "visit_duration_consistency": true,
+    "timestamp_consistency": true,
+    "zone_history_consistency": true,
+    "archived_tracks_never_reactivate": true,
+    "validation_passed": true
+  },
+  "performance": {
+    "execution_time_seconds": 146.1,
+    "total_frames_analyzed": 5938,
+    "fps_average": 40.6,
+    "runtime_overhead_percent": 4.2
+  }
+}

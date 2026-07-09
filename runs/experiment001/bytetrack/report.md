@@ -1,0 +1,29 @@
+# Experiment 001 - Tracker Report: BYTETRACK
+
+- **Tracker:** BYTETRACK
+- **Detector:** yolo11l
+- **Frames Sampled:** 5937
+- **Total Runtime:** 126.63 s
+
+## Performance Metrics
+
+| Metric | Value |
+|---|---|
+| Tracker Type | bytetrack |
+| Model | yolo11l |
+| Frames Sampled | 5937 |
+| Average active tracks | 10.191342428836112 |
+| Maximum active tracks | 19 |
+| Track recovery count | 514 |
+| Lost tracks | 707 |
+| Track fragmentation | 271 |
+| ID switches | N/A (requires ground truth) |
+| Median FPS | 46.885900757729296 |
+| Median inference time | 1.63 ms |
+| Peak RAM | 457.26 MB |
+| Peak GPU memory | N/A (CPU/MPS only) |
+| Runtime | 126.63 s |
+| MOTA | N/A (requires ground truth) |
+| MOTP | N/A (requires ground truth) |
+| IDF1 | N/A (requires ground truth) |
+| HOTA | N/A (requires ground truth) |

@@ -1,0 +1,12 @@
+{
+  "avg_tracks": 10.287855819437427,
+  "max_tracks": 19,
+  "recovered_tracks": 437,
+  "tracks_lost": 569,
+  "track_fragmentation": 203,
+  "median_fps": 7.260817154425376,
+  "median_ms": 120.89562497567385,
+  "peak_ram_mb": 361.693184,
+  "runtime": 817.6765608787537,
+  "config": "{'track_high_thresh': 0.25, 'track_low_thresh': 0.1, 'new_track_thresh': 0.25, 'track_buffer': 90, 'match_thresh': 0.8, 'fuse_score': True, 'gmc_method': 'none'}"
+}

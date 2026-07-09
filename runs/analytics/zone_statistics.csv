@@ -1,0 +1,14 @@
+metric,details,value
+transition,Kitchen -> Dining,37
+transition,Dining -> Waiting,55
+transition,Waiting -> Dining,60
+transition,Dining -> Kitchen,29
+transition,Waiting -> Entrance,16
+transition,Entrance -> Waiting,21
+transition,Reception -> Dining,37
+transition,Dining -> Reception,36
+average_dwell_time,Entrance,0.78s
+average_dwell_time,Waiting,6.26s
+average_dwell_time,Reception,5.02s
+average_dwell_time,Dining,5.23s
+average_dwell_time,Kitchen,3.62s
